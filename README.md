@@ -6,7 +6,6 @@ TeamSpeakHasher is an OpenCL-based tool that can be used to increase the securit
 ### Linux
 1. Make sure you have the OpenCL headers and libraries set up properly on your system.
 2. Use the provided `Makefile` to build: `make all`
-
 3. Enjoy.
 
 ### Windows
@@ -37,7 +36,17 @@ There are two commands:
 
 
 ## FAQ
+* **How to I find the public key of my identity?**
+  
+    Use the [TSIdentityTool](https://github.com/landave/TSIdentityTool).
+* **What is the input string to the hash function?**
 
+    The input string is `PUBLICKEY || COUNTER`, where `PUBLICKEY` is the public key passed to the TeamSpeakHasher's `add` command, and `COUNTER` is a decimal ASCII encoding of the current counter (64-bit unsigned integer).
+    
+    For more details to how the computation is done and how the public key relates to what is stored in the ini file, we refer to the [FAQ of TSIdentityTool](https://github.com/landave/TSIdentityTool#faq).
+* **How can I remove or modify an identity from the database?**
+
+    Removing or modifying database entries is currently not supported. In order to do this, please edit `tshasher.ini` manually.
 * **What is the slow phase?**
     
     The slow phase is reached when the input to the hash function has a length such that two blocks (instead of one block) need to be compressed every time the counter is increased. Hence, the computation in the slow phase is only half as fast.
