@@ -36,7 +36,7 @@ There are two commands:
 
 
 ## FAQ
-* **How to I find the public key of my identity?**
+* **How do I find the public key of my identity?**
   
     Use the [TSIdentityTool](https://github.com/landave/TSIdentityTool).
 * **What is the input string to the hash function?**
