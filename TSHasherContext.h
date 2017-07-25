@@ -40,6 +40,7 @@ SOFTWARE.
 #include <Windows.h>
 #else
 #include <signal.h>
+#define __stdcall
 #endif
 
 #define DEV_TYPE    CL_DEVICE_TYPE_GPU
