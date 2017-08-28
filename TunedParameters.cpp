@@ -77,13 +77,13 @@ TunedParameters TunedParameters::parse(const std::string& segment) {
                         prefix_devicename)
           == 0) {
         devicename = entry.substr(prefix_devicename.size());
-        devicename_set = true;
+        devicename_set = devicename.size()>0;
       } else if (entry.compare(0,
                                prefix_deviceidentifier.size(),
                                prefix_deviceidentifier)
                  == 0) {
         deviceidentifier = entry.substr(prefix_deviceidentifier.size());
-        deviceidentifier_set = true;
+        deviceidentifier_set = deviceidentifier.size()>0;
       } else if (entry.compare(0,
                                prefix_localworksize.size(),
                                prefix_localworksize)

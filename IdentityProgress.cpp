@@ -21,6 +21,7 @@ SOFTWARE.
 */
 #include "IdentityProgress.h"
 
+#include <algorithm>
 #include <string>
 
 const char* IdentityProgress::NICKNAME_STR = "nickname";
@@ -63,7 +64,10 @@ IdentityProgress IdentityProgress::parse(const std::string &segment) {
 
   try {
     std::string entry;
-    std::istringstream iss(segment);
+    std::string segment_spacefree = segment;
+    std::replace(segment_spacefree.begin(), segment_spacefree.end(),
+                 ' ', '_');
+    std::istringstream iss(segment_spacefree);
     while (iss >> entry) {
       using namespace std;
       auto prefix_nickname(string(NICKNAME_STR) + "=");
@@ -76,13 +80,13 @@ IdentityProgress IdentityProgress::parse(const std::string &segment) {
                         prefix_nickname)
           == 0) {
         nickname = entry.substr(prefix_nickname.size());
-        nickname_set = true;
+        nickname_set = nickname.size()>0;
       } else if (entry.compare(0,
                                 prefix_identity.size(),
                                 prefix_identity)
                  == 0) {
         identity = entry.substr(prefix_identity.size());
-        identity_set = true;
+        identity_set = identity.size()>0;
       } else if (entry.compare(0,
                                 prefix_currentcounter.size(),
                                 prefix_currentcounter)
@@ -112,7 +116,7 @@ IdentityProgress IdentityProgress::parse(const std::string &segment) {
 
 
   if (!nickname_set || nickname.empty()) {
-    nickname = "(no nickname)";
+    nickname = "(no_nickname)";
   }
 
   if (!bestcounter_set) {
