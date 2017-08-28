@@ -39,7 +39,7 @@ There are two commands:
 * **How do I find the public key of my identity?**
   
     Use the [TSIdentityTool](https://github.com/landave/TSIdentityTool).
-* **How can I export an identity with its best counter back to the TeamSpeak ini format?
+* **How can I export an identity with its best counter back to the TeamSpeak ini format?**
 
     Exporting to the TeamSpeak ini format is not supported by TeamSpeakHasher.
     This is because such an ini file would include the private key of your identity.
