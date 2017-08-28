@@ -39,14 +39,26 @@ There are two commands:
 * **How do I find the public key of my identity?**
   
     Use the [TSIdentityTool](https://github.com/landave/TSIdentityTool).
+* **How can I export an identity with its best counter back to the TeamSpeak ini format?
+
+    Exporting to the TeamSpeak ini format is not supported by TeamSpeakHasher.
+    This is because such an ini file would include the private key of your identity.
+    Since TeamSpeakHasher's computation only depends on the public key, we do not even allow the tool to touch the private key.
+    Consequently, you need to insert the best counter from TeamSpeakHasher to your TeamSpeak identity ini file.
+    In order to do this, export your identity with TeamSpeak and open the generated ini file, which will contain an `identity` of the following format:
+    
+    `identity := COUNTER || 'V' || obfuscatedKeyPair`
+    
+    Now you can simply put the desired counter before the first `V` of your identity and reimport the ini file to TeamSpeak.
+    
+* **How can I remove or modify an identity from the database?**
+
+    Removing or modifying database entries is currently not supported. In order to do this, please edit `tshasher.ini` manually.
 * **What is the input string to the hash function?**
 
     The input string is `PUBLICKEY || COUNTER`, where `PUBLICKEY` is the public key passed to the TeamSpeakHasher's `add` command, and `COUNTER` is a decimal ASCII encoding of the current counter (64-bit unsigned integer).
     
     For more details to how the computation is done and how the public key relates to what is stored in the ini file, we refer to the [FAQ of TSIdentityTool](https://github.com/landave/TSIdentityTool#faq).
-* **How can I remove or modify an identity from the database?**
-
-    Removing or modifying database entries is currently not supported. In order to do this, please edit `tshasher.ini` manually.
 * **What is the slow phase?**
     
     The slow phase is reached when the input to the hash function has a length such that two blocks (instead of one block) need to be compressed every time the counter is increased. Hence, the computation in the slow phase is only half as fast.
