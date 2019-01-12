@@ -395,29 +395,25 @@ std::string TSHasherContext::getFormattedDouble(double x) {
 }
 
 std::string TSHasherContext::getFormattedDuration(double seconds) {
-  if(seconds < 1)
-    return "0 s";
-  //round it
-  unsigned int second = seconds;
+  //round towards zero
+  uint64_t second = static_cast<uint64_t>(seconds);
   std::string out = "";
   if(second / 86400 > 0) {
-    unsigned int days = second / 86400;
-    out = std::to_string(days) + " days ";
+    uint_fast16_t days = second / 86400;
+    out += std::to_string(days) + " days ";
     second -= days * 86400;
   }
   if(second / 3600 > 0) {
-    unsigned int h = second/3600;
+    uint_fast8_t h = second/3600;
     out += std::to_string(h) + " h ";
     second -= h * 3600;
   }
   if(second / 60 > 0) {
-    unsigned int min = second / 60;
+    uint_fast8_t min = second / 60;
     out += std::to_string(min) + " min ";
     second -= min * 60;
   }
-  if(second > 0) {
-    out += std::to_string(second) + " s";
-  }
+  out += std::to_string(second) + " s";
   return out;
 }
 
