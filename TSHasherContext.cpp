@@ -399,17 +399,17 @@ std::string TSHasherContext::getFormattedDuration(double seconds) {
   uint64_t second = static_cast<uint64_t>(seconds);
   std::string out = "";
   if(second / 86400 > 0) {
-    uint_fast16_t days = second / 86400;
+    uint64_t days = second / 86400;
     out += std::to_string(days) + " days ";
     second -= days * 86400;
   }
   if(second / 3600 > 0) {
-    uint_fast8_t h = second/3600;
+    uint64_t h = second/3600;
     out += std::to_string(h) + " h ";
     second -= h * 3600;
   }
   if(second / 60 > 0) {
-    uint_fast8_t min = second / 60;
+    uint64_t min = second / 60;
     out += std::to_string(min) + " min ";
     second -= min * 60;
   }
