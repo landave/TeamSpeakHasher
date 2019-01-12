@@ -395,9 +395,26 @@ std::string TSHasherContext::getFormattedDouble(double x) {
 }
 
 std::string TSHasherContext::getFormattedDuration(double seconds) {
-  if (seconds / 60 <= 1) { return std::to_string(seconds) + " s"; }
-  if (seconds / (60 * 60) <= 1) { return std::to_string(seconds / 60) + " min"; }
-  return std::to_string(seconds / (60 * 60)) + " h";
+  //round towards zero
+  uint64_t second = static_cast<uint64_t>(seconds);
+  std::string out = "";
+  if(second / 86400 > 0) {
+    uint64_t days = second / 86400;
+    out += std::to_string(days) + " days ";
+    second -= days * 86400;
+  }
+  if(second / 3600 > 0) {
+    uint64_t h = second/3600;
+    out += std::to_string(h) + " h ";
+    second -= h * 3600;
+  }
+  if(second / 60 > 0) {
+    uint64_t min = second / 60;
+    out += std::to_string(min) + " min ";
+    second -= min * 60;
+  }
+  out += std::to_string(second) + " s";
+  return out;
 }
 
 void TSHasherContext::printinfo(const std::vector<DeviceContext> &dev_ctxs) {
