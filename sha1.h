@@ -28,13 +28,13 @@ SOFTWARE.
 #include <vector>
 
 class SHA1 {
- public:
+public:
   SHA1();
-  void update(const std::string &s);
+  void update(const std::string& s);
   std::vector<uint8_t> final();
 
- private:
-  void update(std::istream &is);
+private:
+  void update(std::istream& is);
   void reset();
   void transform(uint32_t block[]);
   uint32_t digest[5];

@@ -29,7 +29,7 @@ SOFTWARE.
 
 
 class TunedParameters {
- public:
+public:
   std::string devicename;
   std::string deviceidentifier;
   uint64_t localworksize;
@@ -37,9 +37,9 @@ class TunedParameters {
 
   TunedParameters();
   TunedParameters(std::string devicename,
-                  std::string deviceidentifier,
-                  uint64_t localworksize,
-                  uint64_t globalworksize);
+    std::string deviceidentifier,
+    uint64_t localworksize,
+    uint64_t globalworksize);
 
   static const char* DEVICENAME_STR;
   static const char* DEVICEIDENTIFIER_STR;

@@ -36,73 +36,69 @@ static uint32_t rol(const uint32_t value, const size_t bits) {
 
 
 static uint32_t blk(const uint32_t block[BLOCK_INTS], const size_t i) {
-  return rol(block[(i + 13) & 15]
-              ^ block[(i + 8) & 15]
-              ^ block[(i + 2) & 15]
-              ^ block[i]
-              , 1);
+  return rol(block[(i + 13) & 15] ^ block[(i + 8) & 15] ^ block[(i + 2) & 15] ^ block[i], 1);
 }
 
 static void R0(const uint32_t block[BLOCK_INTS],
-               const uint32_t v,
-               uint32_t *w,
-               const uint32_t x,
-               const uint32_t y,
-               uint32_t *z,
-               const size_t i) {
-  *z += ((*w&(x^y)) ^ y) + block[i] + 0x5a827999 + rol(v, 5);
+  const uint32_t v,
+  uint32_t* w,
+  const uint32_t x,
+  const uint32_t y,
+  uint32_t* z,
+  const size_t i) {
+  *z += ((*w & (x ^ y)) ^ y) + block[i] + 0x5a827999 + rol(v, 5);
   *w = rol(*w, 30);
 }
 
 
 static void R1(uint32_t block[BLOCK_INTS],
-               const uint32_t v,
-               uint32_t *w,
-               const uint32_t x,
-               const uint32_t y,
-               uint32_t *z,
-               const size_t i) {
+  const uint32_t v,
+  uint32_t* w,
+  const uint32_t x,
+  const uint32_t y,
+  uint32_t* z,
+  const size_t i) {
   block[i] = blk(block, i);
-  *z += ((*w&(x^y)) ^ y) + block[i] + 0x5a827999 + rol(v, 5);
+  *z += ((*w & (x ^ y)) ^ y) + block[i] + 0x5a827999 + rol(v, 5);
   *w = rol(*w, 30);
 }
 
 
 static void R2(uint32_t block[BLOCK_INTS],
-               const uint32_t v,
-               uint32_t *w,
-               const uint32_t x,
-               const uint32_t y,
-               uint32_t *z,
-               const size_t i) {
+  const uint32_t v,
+  uint32_t* w,
+  const uint32_t x,
+  const uint32_t y,
+  uint32_t* z,
+  const size_t i) {
   block[i] = blk(block, i);
-  *z += (*w^x^y) + block[i] + 0x6ed9eba1 + rol(v, 5);
+  *z += (*w ^ x ^ y) + block[i] + 0x6ed9eba1 + rol(v, 5);
   *w = rol(*w, 30);
 }
 
 
 static void R3(uint32_t block[BLOCK_INTS],
-               const uint32_t v,
-               uint32_t *w,
-               const uint32_t x,
-               const uint32_t y,
-               uint32_t *z,
-               const size_t i) {
+  const uint32_t v,
+  uint32_t* w,
+  const uint32_t x,
+  const uint32_t y,
+  uint32_t* z,
+  const size_t i) {
   block[i] = blk(block, i);
-  *z += (((*w | x)&y) | (*w&x)) + block[i] + 0x8f1bbcdc + rol(v, 5);
+  *z += (((*w | x) & y) | (*w & x)) + block[i] + 0x8f1bbcdc + rol(v, 5);
   *w = rol(*w, 30);
 }
 
 
 static void R4(uint32_t block[BLOCK_INTS],
-               const uint32_t v,
-               uint32_t *w,
-               const uint32_t x,
-               const uint32_t y,
-               uint32_t *z,
-               const size_t i) {
+  const uint32_t v,
+  uint32_t* w,
+  const uint32_t x,
+  const uint32_t y,
+  uint32_t* z,
+  const size_t i) {
   block[i] = blk(block, i);
-  *z += (*w^x^y) + block[i] + 0xca62c1d6 + rol(v, 5);
+  *z += (*w ^ x ^ y) + block[i] + 0xca62c1d6 + rol(v, 5);
   *w = rol(*w, 30);
 }
 
@@ -204,8 +200,8 @@ void SHA1::transform(uint32_t block[BLOCK_INTS]) {
 }
 
 
-static void buffer_to_block(const std::string &buffer,
-                            uint32_t block[BLOCK_INTS]) {
+static void buffer_to_block(const std::string& buffer,
+  uint32_t block[BLOCK_INTS]) {
   for (size_t i = 0; i < BLOCK_INTS; i++) {
     block[i] = (buffer[4 * i + 3] & 0xff)
       | (buffer[4 * i + 2] & 0xff) << 8
@@ -231,13 +227,13 @@ void SHA1::reset() {
 }
 
 
-void SHA1::update(const std::string &s) {
+void SHA1::update(const std::string& s) {
   std::istringstream is(s);
   update(is);
 }
 
 
-void SHA1::update(std::istream &is) {
+void SHA1::update(std::istream& is) {
   while (true) {
     char sbuf[BLOCK_BYTES];
     is.read(sbuf, BLOCK_BYTES - buffer.size());
@@ -253,7 +249,7 @@ void SHA1::update(std::istream &is) {
 }
 
 std::vector<uint8_t> SHA1::final() {
-  uint64_t total_bits = (transforms*BLOCK_BYTES + buffer.size()) * 8;
+  uint64_t total_bits = (transforms * BLOCK_BYTES + buffer.size()) * 8;
 
   buffer += static_cast<uint8_t>(0x80);
   size_t orig_size = buffer.size();

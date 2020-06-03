@@ -29,14 +29,14 @@ SOFTWARE.
 #include <string>
 
 class Config {
- public:
+public:
   static bool load();
   static bool store();
   static std::map<std::string, IdentityProgress> conf;
   static std::map<std::string, TunedParameters> tuned;
   static void printidentities();
 
- private:
+private:
   static const char* FILENAME;
 };
 

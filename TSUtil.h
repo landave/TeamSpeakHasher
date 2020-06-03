@@ -30,7 +30,7 @@ SOFTWARE.
 
 
 class TSUtil {
- public:
+public:
   static bool isSlowPhase(size_t identity_length, uint64_t counter) {
     return identity_length + TSUtil::decimalLength(counter) + 1 + 8 > 128;
   }
@@ -79,7 +79,7 @@ class TSUtil {
     return static_cast<uint8_t>(8 * zerobytes + zerobits);
   }
 
- private:
+private:
   static uint64_t powlong(uint64_t base, uint64_t exp) {
     uint64_t result = 1;
     while (exp != 0) {

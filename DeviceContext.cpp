@@ -43,14 +43,14 @@ DeviceContext::DeviceContext(std::string device_name,
   cl::Kernel kernel,
   cl::Kernel kernel2,
   cl::CommandQueue command_queue,
-  TSHasherContext *tshasherctx,
+  TSHasherContext* tshasherctx,
   cl_uint max_compute_units,
   cl_device_type devicetype,
   size_t global_work_size,
   size_t local_work_size,
   cl::Buffer d_results,
   cl::Buffer d_identity,
-  uint8_t *h_results,
+  uint8_t* h_results,
   std::string identitystring) :
   device_name(std::move(device_name)),
   device(device),
@@ -69,21 +69,21 @@ DeviceContext::DeviceContext(std::string device_name,
   identitystring(std::move(identitystring)),
   recenttimes(NUM_TIME_MEASURMENTS),
   recentiterations(NUM_TIME_MEASURMENTS) {
-    bestdifficulty = 0;
-    bestdifficulty_counter = 0;
-    lastschedulediterations_total = 0;
-    lastscheduled_startcounter = 0;
-    schedulediterations_total = 0;
-    completediterations_total = 0;
-    completed_kernels = 0;
-    timer_started = false;
-    timecounter = 0;
+  bestdifficulty = 0;
+  bestdifficulty_counter = 0;
+  lastschedulediterations_total = 0;
+  lastscheduled_startcounter = 0;
+  schedulediterations_total = 0;
+  completediterations_total = 0;
+  completed_kernels = 0;
+  timer_started = false;
+  timecounter = 0;
 }
 
 void DeviceContext::measureTime() {
   auto currenttime = std::chrono::high_resolution_clock::now();
   if (timer_started) {
-    auto timeidx = timecounter%NUM_TIME_MEASURMENTS;
+    auto timeidx = timecounter % NUM_TIME_MEASURMENTS;
     recenttimes[timeidx] = currenttime - laststarttime;
     recentiterations[timeidx] = lastschedulediterations_total;
     timecounter++;
@@ -99,12 +99,8 @@ std::chrono::duration<uint64_t, std::nano> DeviceContext::getCurrentKernelRunnin
 double DeviceContext::getAvgSpeed() const {
   using namespace std::chrono;
   size_t len = std::min(timecounter, NUM_TIME_MEASURMENTS);
-  auto totaliterations = std::accumulate(recentiterations.begin(),
-                                         recentiterations.begin() + len,
-                                         (uint64_t)0);
-  auto totaltime = std::accumulate(recenttimes.begin(),
-                                   recenttimes.begin() + len,
-                                   steady_clock::duration::zero());
+  auto totaliterations = std::accumulate(recentiterations.begin(), recentiterations.begin() + len, (uint64_t)0);
+  auto totaltime = std::accumulate(recenttimes.begin(), recenttimes.begin() + len, steady_clock::duration::zero());
   auto seconds = duration_cast<nanoseconds>(totaltime).count() / 1e9;
   return totaliterations / seconds;
 }

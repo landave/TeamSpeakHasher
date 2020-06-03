@@ -39,23 +39,23 @@ SOFTWARE.
 class TSHasherContext;
 
 class DeviceContext {
- public:
+public:
   DeviceContext(std::string device_name,
-                cl::Device device,
-                cl::Context context,
-                cl::Program program,
-                cl::Kernel kernel,
-                cl::Kernel kernel2,
-                cl::CommandQueue command_queue,
-                TSHasherContext *tshasherctx,
-                cl_uint max_compute_units,
-                cl_device_type devicetype,
-                size_t global_work_size,
-                size_t local_work_size,
-                cl::Buffer d_results,
-                cl::Buffer d_identity,
-                uint8_t *h_results,
-                std::string identitystring);
+    cl::Device device,
+    cl::Context context,
+    cl::Program program,
+    cl::Kernel kernel,
+    cl::Kernel kernel2,
+    cl::CommandQueue command_queue,
+    TSHasherContext* tshasherctx,
+    cl_uint max_compute_units,
+    cl_device_type devicetype,
+    size_t global_work_size,
+    size_t local_work_size,
+    cl::Buffer d_results,
+    cl::Buffer d_identity,
+    uint8_t* h_results,
+    std::string identitystring);
 
   std::string      device_name;
   cl::Device      device;
@@ -65,7 +65,7 @@ class DeviceContext {
   cl::Kernel          kernel2;
   cl::CommandQueue    command_queue;
 
-  TSHasherContext *tshasherctx;
+  TSHasherContext* tshasherctx;
 
   cl_uint             max_compute_units;
 
@@ -76,7 +76,7 @@ class DeviceContext {
 
   cl::Buffer          d_results;
   cl::Buffer      d_identity;
-  uint8_t             *h_results;
+  uint8_t* h_results;
 
   cl::Event      kernelcompletedevent;
   cl::Event      resultavailableevent;
@@ -102,7 +102,7 @@ class DeviceContext {
 
   std::chrono::duration<uint64_t, std::nano> getRecentMaxTime() const;
 
- private:
+private:
   std::chrono::time_point<std::chrono::high_resolution_clock> laststarttime;
   std::vector<std::chrono::duration<uint64_t, std::nano>> recenttimes;
   std::vector<uint64_t> recentiterations;

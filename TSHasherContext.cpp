@@ -41,6 +41,7 @@ SOFTWARE.
 #include "DeviceContext.h"
 #include "Kernel.h"
 #include "sha1.h"
+#include "Table.h"
 #include "TSUtil.h"
 #include "TimerKiller.h"
 #include "TunedParameters.h"
@@ -61,6 +62,8 @@ const size_t TSHasherContext::KERNEL_STD_ITERATIONS = 1024;
 #define VENDOR_ID_AMD 1
 #define VENDOR_ID_NV (1<<5)
 
+//#define BUSYWAITING_WORKAROUND
+
 #if defined(_WIN32) || defined(_WIN64)
 #if !defined(NOMINMAX)
 #define NOMINMAX
@@ -80,14 +83,14 @@ void TSHasherContext::clearConsole() {
 
 
 TSHasherContext::TSHasherContext(std::string identity,
-                                 uint64_t startcounter,
-                                 uint64_t bestcounter,
-                                 uint64_t throttlefactor) :
-    startcounter(startcounter),
-    global_bestdifficulty(TSUtil::getDifficulty(identity, bestcounter)),
-    global_bestdifficulty_counter(bestcounter),
-    identity(identity),
-    throttlefactor(throttlefactor) {
+  uint64_t startcounter,
+  uint64_t bestcounter,
+  uint64_t throttlefactor) :
+  startcounter(startcounter),
+  global_bestdifficulty(TSUtil::getDifficulty(identity, bestcounter)),
+  global_bestdifficulty_counter(bestcounter),
+  identity(identity),
+  throttlefactor(throttlefactor) {
   MIN_TARGET_DIFFICULTY = 34;
 
   std::vector<cl::Platform> platforms;
@@ -96,28 +99,25 @@ TSHasherContext::TSHasherContext(std::string identity,
 
   cl::Platform::get(&platforms);
   for (uint32_t i = 0; i < platforms.size(); i++) {
-    auto &platform = platforms[i];
+    auto& platform = platforms[i];
     auto platform_vendor = std::string(platform.getInfo<CL_PLATFORM_VENDOR>().c_str());
 
     uint32_t platform_vendor_id;
-    if (platform_vendor == "Advanced Micro Devices, Inc."
-       || platform_vendor == "AuthenticAMD") {
+    if (platform_vendor == "Advanced Micro Devices, Inc." || platform_vendor == "AuthenticAMD") {
       platform_vendor_id = VENDOR_ID_AMD;
-    } else if (platform_vendor == "NVIDIA Corporation") {
+    }
+    else if (platform_vendor == "NVIDIA Corporation") {
       platform_vendor_id = VENDOR_ID_NV;
-    } else {
+    }
+    else {
       platform_vendor_id = VENDOR_ID_GENERIC;
     }
 
 
     std::vector<cl::Device> tmp_devices;
     platform.getDevices(DEV_TYPE, &tmp_devices);
-    devices.insert(std::end(devices),
-                   std::begin(tmp_devices),
-                   std::end(tmp_devices));
-    vendor_ids.insert(std::end(vendor_ids),
-                      tmp_devices.size(),
-                      platform_vendor_id);
+    devices.insert(std::end(devices), std::begin(tmp_devices), std::end(tmp_devices));
+    vendor_ids.insert(std::end(vendor_ids), tmp_devices.size(), platform_vendor_id);
   }
   if (devices.size() == 0) {
     std::cerr << "Error: No devices have been found." << std::endl;
@@ -126,7 +126,7 @@ TSHasherContext::TSHasherContext(std::string identity,
 
 
   for (cl_uint device_id = 0; device_id < devices.size(); device_id++) {
-    cl::Device &device = devices[device_id];
+    cl::Device& device = devices[device_id];
 
     cl::Context context({ device });
 
@@ -134,7 +134,6 @@ TSHasherContext::TSHasherContext(std::string identity,
     sources.push_back({ KERNEL_CODE, strlen(KERNEL_CODE) });
 
     cl::Program program(context, sources);
-
 
     cl_device_type devicetype = device.getInfo <CL_DEVICE_TYPE>();
 
@@ -152,24 +151,22 @@ TSHasherContext::TSHasherContext(std::string identity,
 
     char build_opts[2048] = { 0 };
     snprintf(build_opts,
-             sizeof(build_opts) - 1,
-             "%s -D VENDOR_ID=%u "
-             "-D CUDA_ARCH=%u "
-             "-D VECT_SIZE=%u "
-             "-D DEVICE_TYPE=%u "
-             "-D _unroll "
-             "-cl-std=CL1.2 -w",
-             BUILD_OPTS_BASE,
-             vendor_id,
-             (sm_major * 100) + sm_minor,
-             vector_width,
-             (uint32_t)devicetype);
+      sizeof(build_opts) - 1,
+      "%s -D VENDOR_ID=%u "
+      "-D CUDA_ARCH=%u "
+      "-D VECT_SIZE=%u "
+      "-D DEVICE_TYPE=%u "
+      "-D _unroll "
+      "-cl-std=CL1.2 -w",
+      BUILD_OPTS_BASE,
+      vendor_id,
+      (sm_major * 100) + sm_minor,
+      vector_width,
+      (uint32_t)devicetype);
 
 
     if (program.build({ device }, build_opts) != CL_SUCCESS) {
-      std::cout << " Error building: "
-                << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device)
-                << std::endl;
+      std::cout << " Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << std::endl;
       exit(1);
     }
 
@@ -188,46 +185,38 @@ TSHasherContext::TSHasherContext(std::string identity,
     auto regex = std::regex("^ +| +$|( ) +");
     device_name = std::regex_replace((device_name), regex, "$1");
 
-    std::cout << "Found new device #" << device_id << ": "
-              << device_name << ", " << max_compute_units
-              << " compute units" << std::endl;
+    std::cout << "Found new device #" << device_id << ": " << device_name << ", " << max_compute_units << " compute units" << std::endl;
 
     size_t global_work_size = DEV_DEFAULT_GLOBAL_WORK_SIZE;
     size_t local_work_size = DEV_DEFAULT_LOCAL_WORK_SIZE;
     auto bestgloballocal = tune(&device, device_id, build_opts);
-    global_work_size = std::max(bestgloballocal.first / throttlefactor,
-                                bestgloballocal.second);
+    global_work_size = std::max(bestgloballocal.first / throttlefactor, bestgloballocal.second);
     local_work_size = bestgloballocal.second;
 
-    // Device memory
+    // device memory
     const size_t size_results = global_work_size * sizeof(uint8_t);
 
     cl::Buffer d_results(context, CL_MEM_WRITE_ONLY, size_results);
     cl::Buffer d_identity(context, CL_MEM_READ_ONLY, identity.size());
 
 
-    // Host memory
+    // host memory
     auto h_results = new uint8_t[global_work_size]();
-    command_queue.enqueueWriteBuffer(d_results, CL_TRUE, 0,
-                                     size_results, h_results);
+    command_queue.enqueueWriteBuffer(d_results, CL_TRUE, 0, size_results, h_results);
     const cl_uint identity_length = (cl_uint)identity.size();
-    command_queue.enqueueWriteBuffer(d_identity, CL_TRUE, 0,
-                                     identity_length, identity.c_str());
+    command_queue.enqueueWriteBuffer(d_identity, CL_TRUE, 0, identity_length, identity.c_str());
 
-    DeviceContext dev_ctx(device_name, device, context, program,
-                          kernel, kernel2, command_queue, this,
-                          max_compute_units, devicetype,
-                          global_work_size, local_work_size,
-                          d_results, d_identity, h_results, identity);
-    
+    DeviceContext dev_ctx(device_name, device, context, program, kernel, kernel2, command_queue, this,
+      max_compute_units, devicetype, global_work_size, local_work_size, d_results, d_identity, h_results, identity);
+
     dev_ctxs.push_back(dev_ctx);
   }
 
   Config::store();
 }
 
-std::string TSHasherContext::getDeviceIdentifier(cl::Device *device,
-                                                 cl_uint device_id) {
+std::string TSHasherContext::getDeviceIdentifier(cl::Device* device,
+  cl_uint device_id) {
   auto devicename = std::string(device->getInfo<CL_DEVICE_NAME>().c_str())
     + "_" + std::string(device->getInfo<CL_DEVICE_VENDOR>().c_str())
     + "_" + std::to_string(device->getInfo<CL_DEVICE_VENDOR_ID>())
@@ -241,9 +230,9 @@ std::string TSHasherContext::getDeviceIdentifier(cl::Device *device,
   return std::regex_replace(devicename, target, replacement);
 }
 
-std::pair<uint64_t, uint64_t> TSHasherContext::tune(cl::Device *device,
-                                                    cl_uint device_id,
-                                                    const char* build_opts) {
+std::pair<uint64_t, uint64_t> TSHasherContext::tune(cl::Device* device,
+  cl_uint device_id,
+  const char* build_opts) {
   using namespace std::chrono;
   auto devicename = std::string(device->getInfo<CL_DEVICE_NAME>().c_str());
   auto regex = std::regex{ R"([^\w])" };
@@ -256,15 +245,12 @@ std::pair<uint64_t, uint64_t> TSHasherContext::tune(cl::Device *device,
 
   std::cout << "  Tuning... " << std::endl;
 
-  size_t max_local_worksize = device->getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>()[0];
 
   uint64_t besttime = UINT64_MAX;
   std::pair<uint64_t, uint64_t> result;
   cl_ulong tunestartcounter = 10000000000000000000ULL;
   const cl_uchar tunetargetdifficulty = 60;
-  const std::string tuneidentity = "AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMM"
-                                   "NNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ"
-                                   "AAABBBCCCDDDEEEFFFGGG";
+  const std::string tuneidentity = "AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZAAABBBCCCDDDEEEFFFGGG";
   const size_t identity_length = tuneidentity.size();
 
 
@@ -274,46 +260,49 @@ std::pair<uint64_t, uint64_t> TSHasherContext::tune(cl::Device *device,
   cl::Program program(context, sources);
 
   if (program.build({ *device }, build_opts) != CL_SUCCESS) {
-    std::cout << " Error building: "
-              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(*device)
-              << std::endl;
+    std::cout << " Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(*device) << std::endl;
     exit(1);
   }
 
   cl::Kernel kernel(program, KERNEL_NAME);
+
+  size_t max_local_worksize = 0;
+  kernel.getWorkGroupInfo<size_t>(*device, CL_KERNEL_WORK_GROUP_SIZE, &max_local_worksize);
+  max_local_worksize = std::min(max_local_worksize, device->getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>()[0]);
+
+
   cl::CommandQueue command_queue(context, *device);
 
 
-  const size_t max_global_work_size = MAX_GLOBALLOCAL_RATIO*max_local_worksize;
+  const size_t max_global_work_size = MAX_GLOBALLOCAL_RATIO * max_local_worksize;
   const size_t size_results = max_global_work_size * sizeof(uint8_t);
 
   cl::Buffer tune_d_results(context, CL_MEM_WRITE_ONLY, size_results);
   cl::Buffer tune_d_identity(context, CL_MEM_READ_ONLY, tuneidentity.size());
   uint8_t* tune_h_results = new uint8_t[max_global_work_size]();
-  command_queue.enqueueWriteBuffer(tune_d_results, CL_TRUE,
-                                   0, size_results, tune_h_results);
-  command_queue.enqueueWriteBuffer(tune_d_identity, CL_TRUE,
-                                   0, identity_length, tuneidentity.c_str());
+  command_queue.enqueueWriteBuffer(tune_d_results, CL_TRUE, 0, size_results, tune_h_results);
+  command_queue.enqueueWriteBuffer(tune_d_identity, CL_TRUE, 0, identity_length, tuneidentity.c_str());
 
 
 
   std::cout << "  ";
   const size_t start_local_worksize = max_local_worksize > 128 ? 16 : 1;
-  const size_t end_local_worksize = max_local_worksize > 128 ?
-                                      std::max((size_t)1, max_local_worksize / 16)
-                                      : max_local_worksize;
+  const size_t end_local_worksize = max_local_worksize;
+  const size_t repetitions = 30;
+  const size_t warmup_runs = 5;
+  const size_t max_time_per_kernel_ms = 150;
+
   for (size_t localsize = start_local_worksize;
-       localsize <= end_local_worksize;
-       localsize *= 2) {
+    localsize <= end_local_worksize;
+    localsize *= 2) {
     size_t globalsize = localsize;
     duration<uint64_t, std::nano> time = steady_clock::duration::zero();
-    while (globalsize <= max_global_work_size
-           && duration_cast<milliseconds>(time).count() < 2000) {
+    while (globalsize <= max_global_work_size && duration_cast<milliseconds>(time / repetitions).count() < max_time_per_kernel_ms) {
       time_point<high_resolution_clock> starttime;
 
-      for (size_t q = 0; q < 32; q++) {
+      for (size_t q = 0; q < repetitions + warmup_runs; q++) {
         // we leave the first two kernel runs for warmup purposes
-        if (q == 2) {
+        if (q == warmup_runs) {
           starttime = high_resolution_clock::now();
         }
         cl_int err;
@@ -325,27 +314,17 @@ std::pair<uint64_t, uint64_t> TSHasherContext::tune(cl::Device *device,
         err |= kernel.setArg(5, tune_d_results);
 
         if (err != CL_SUCCESS) {
-          std::cout << "A critical error occurred while "
-                       "setting kernel arguments."
-                    << std::endl;
+          std::cout << "A critical error occurred while setting kernel arguments." << std::endl;
           exit(-1);
         }
 
-        err = command_queue.enqueueNDRangeKernel(kernel,
-                                                 cl::NullRange,
-                                                 cl::NDRange(globalsize),
-                                                 cl::NDRange(localsize));
+        err = command_queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(globalsize), cl::NDRange(localsize));
         if (err != CL_SUCCESS) {
-          std::cout << "A critical error occurred while enqueuing the kernel."
-                    << std::endl;
+          std::cout << "A critical error occurred while enqueuing the kernel." << std::endl;
           exit(-1);
         }
         err = command_queue.finish();
-        err = command_queue.enqueueReadBuffer(tune_d_results,
-                                              CL_TRUE,
-                                              0,
-                                              globalsize * sizeof(uint8_t),
-                                              tune_h_results);
+        err = command_queue.enqueueReadBuffer(tune_d_results, CL_TRUE, 0, globalsize * sizeof(uint8_t), tune_h_results);
       }
 
       time = high_resolution_clock::now() - starttime;
@@ -354,7 +333,7 @@ std::pair<uint64_t, uint64_t> TSHasherContext::tune(cl::Device *device,
 
       std::cout << ".";
 
-      if (time_norm < besttime) {
+      if (duration_cast<milliseconds>(time / repetitions).count() < max_time_per_kernel_ms && time_norm < besttime) {
         besttime = time_norm;
         result.first = globalsize;
         result.second = localsize;
@@ -363,27 +342,29 @@ std::pair<uint64_t, uint64_t> TSHasherContext::tune(cl::Device *device,
     }
   }
 
-  TunedParameters tunedparams(devicename,
-                              deviceidentifier,
-                              result.second,
-                              result.first);
+  TunedParameters tunedparams(devicename, deviceidentifier, result.second, result.first);
   Config::tuned.insert(std::make_pair(deviceidentifier, tunedparams));
 
-  std::cout << std::endl;
-  std::cout << std::endl << "  Tuning found global_work_size=" << result.first
-            << ", local_work_size=" << result.second
-            << " to be optimal." << std::endl;
+  std::cout << std::endl << std::endl << "  Tuning found global_work_size=" << result.first
+    << ", local_work_size=" << result.second << " to be optimal." << std::endl;
   return result;
 }
 
 void TSHasherContext::compute() {
   TSHasherContext::starttime = std::chrono::high_resolution_clock::now();
+  std::vector<std::thread> threads;
   for (cl_uint device_id = 0; device_id < devices.size(); device_id++) {
-    launch_kernel_single(&dev_ctxs[device_id]);
+    DeviceContext* dev_ctx = &dev_ctxs[device_id];
+    std::thread t([dev_ctx]() -> void { run_kernel_loop(dev_ctx); });
+    threads.push_back(std::move(t));
   }
 
   // this loops until stopped
   TSHasherContext::printinfo(dev_ctxs);
+
+  for (std::thread& t : threads) {
+    t.join();
+  }
 }
 
 
@@ -398,17 +379,17 @@ std::string TSHasherContext::getFormattedDuration(double seconds) {
   //round towards zero
   uint64_t second = static_cast<uint64_t>(seconds);
   std::string out = "";
-  if(second / 86400 > 0) {
+  if (second / 86400 > 0) {
     uint64_t days = second / 86400;
     out += std::to_string(days) + " days ";
     second -= days * 86400;
   }
-  if(second / 3600 > 0) {
-    uint64_t h = second/3600;
+  if (second / 3600 > 0) {
+    uint64_t h = second / 3600;
     out += std::to_string(h) + " h ";
     second -= h * 3600;
   }
-  if(second / 60 > 0) {
+  if (second / 60 > 0) {
     uint64_t min = second / 60;
     out += std::to_string(min) + " min ";
     second -= min * 60;
@@ -417,37 +398,34 @@ std::string TSHasherContext::getFormattedDuration(double seconds) {
   return out;
 }
 
-void TSHasherContext::printinfo(const std::vector<DeviceContext> &dev_ctxs) {
+void TSHasherContext::printinfo(const std::vector<DeviceContext>& dev_ctxs) {
   do {
     clearConsole();
+    Table overalltable({ "Overview","" }, true);
+
     using namespace std::chrono;
     auto currenttime = high_resolution_clock::now();
     auto runningtime_ns = duration_cast<nanoseconds>(currenttime - starttime).count();
     const double runningtime = runningtime_ns / 1e9;
-    std::cout << "Running time: "
-              << getFormattedDuration(runningtime)
-              << std::endl;
+    overalltable.addRow({ "Running time: ", getFormattedDuration(runningtime) });
+
     uint64_t computed_hashes_total = 0;
     double currentspeed_total = 0;
 
-
+    std::vector<Table> devicetables;
     for (cl_uint device_id = 0; device_id < dev_ctxs.size(); device_id++) {
-      const DeviceContext &dev_ctx = dev_ctxs[device_id];
+      const DeviceContext& dev_ctx = dev_ctxs[device_id];
 
       if (dev_ctx.bestdifficulty > global_bestdifficulty) {
         global_bestdifficulty = dev_ctx.bestdifficulty;
         global_bestdifficulty_counter = dev_ctx.bestdifficulty_counter;
       }
 
-      std::cout << "Device "
-                << dev_ctx.device_name
-                << "[" << device_id << "]:"
-                << std::endl;
-                
-      std::cout << "  Global/Local work size: "
-                << dev_ctx.global_work_size << "/"
-                << dev_ctx.local_work_size
-                << std::endl;
+      Table devtable({ "Device " + dev_ctx.device_name + "[" + std::to_string(device_id) + "]", "" }, true);
+
+
+      devtable.addRow({ "Local/Global work size", std::to_string(dev_ctx.local_work_size) + "/" + std::to_string(dev_ctx.global_work_size) });
+
 
       const uint64_t computed_hashes_device = dev_ctx.completediterations_total;
       computed_hashes_total += computed_hashes_device;
@@ -456,189 +434,155 @@ void TSHasherContext::printinfo(const std::vector<DeviceContext> &dev_ctxs) {
       const double currentspeed_device = dev_ctx.getAvgSpeed();
       currentspeed_total += currentspeed_device;
 
-      std::cout << "  Current speed: "
-                << getFormattedDouble(currentspeed_device)
-                << "Hash/s" << std::endl;
-      std::cout << "  Average speed: "
-                << getFormattedDouble(avgspeed_device)
-                << "Hash/s" << std::endl;
-      std::cout << "  Scheduling: "
-                << dev_ctx.completed_kernels / runningtime
-                << " Kernels/s" << std::endl;
+      devtable.addRow({ "Current speed", getFormattedDouble(currentspeed_device) + "Hash/s" });
+      devtable.addRow({ "Average speed", getFormattedDouble(avgspeed_device) + "Hash/s" });
+      devtable.addRow({ "Scheduling", std::to_string(dev_ctx.completed_kernels / runningtime) + " Kernels/s" });
+
+      devicetables.push_back(std::move(devtable));
     }
 
     const double unitspersecond_global = computed_hashes_total / runningtime;
 
-    std::cout << "Current speed [total]: "
-              << getFormattedDouble(currentspeed_total)
-              << "Hash/s"
-              << std::endl;
-    std::cout << "Average speed [total]: "
-              << getFormattedDouble(unitspersecond_global)
-              << "Hash/s"
-              << std::endl;
+    overalltable.addRow({ "Current speed [total]", getFormattedDouble(currentspeed_total) + "Hash/s" });
+    overalltable.addRow({ "Average speed [total]", getFormattedDouble(unitspersecond_global) + "Hash/s" });
 
 
     const bool slowphase = TSUtil::isSlowPhase(identity.size(), startcounter);
     if (slowphase) {
-      std::cout << "WARNING: You have entered the slow phase. "
-                << "With a fresh identity you could double your speed."
-                << std::endl;
-    } else {
-      auto its_until_slow = TSUtil::itsUntilSlowPhase(identity.size(),
-                                                      startcounter);
+      overalltable.addRow({ "Estimated time until slow phase", "0 (IN SLOW PHASE!!!)" });
+    }
+    else {
+      auto its_until_slow = TSUtil::itsUntilSlowPhase(identity.size(), startcounter);
       auto time_until_slow = its_until_slow / currentspeed_total;
-      std::cout << "Estimated time until slow phase: "
-                << getFormattedDuration(time_until_slow)
-                << std::endl;
+      overalltable.addRow({ "Estimated time until slow phase", getFormattedDuration(time_until_slow) });
     }
 
-    uint64_t nextlevel = std::max((uint64_t)(global_bestdifficulty + 1u),
-                                  (uint64_t)MIN_TARGET_DIFFICULTY);
+    uint64_t nextlevel = std::max((uint64_t)(global_bestdifficulty + 1ull),
+      (uint64_t)MIN_TARGET_DIFFICULTY);
 
     // we want to estimate the remaining time for the next level,
     // accounting for the slow phase
     uint64_t nextlevel_estits = ((uint64_t)1 << nextlevel);
-    uint64_t remaining_fastits = TSUtil::itsUntilSlowPhase(identity.size(),
-                                                           startcounter);
-    uint64_t nextlevel_estits_adjusted = slowphase ?
-                                           nextlevel_estits :
-                                             2 * nextlevel_estits
-                                             - std::min(remaining_fastits,
-                                                        nextlevel_estits);
+    uint64_t remaining_fastits = TSUtil::itsUntilSlowPhase(identity.size(), startcounter);
+    uint64_t nextlevel_estits_adjusted = slowphase ? nextlevel_estits : (2 * nextlevel_estits - std::min(remaining_fastits, nextlevel_estits));
     double nextlevel_esttime_seconds = nextlevel_estits_adjusted / currentspeed_total;
 
-    if (nextlevel_esttime_seconds > 60
-        && global_bestdifficulty + 1 < MIN_TARGET_DIFFICULTY) {
+    if (nextlevel_esttime_seconds > 60 && global_bestdifficulty + 1 < MIN_TARGET_DIFFICULTY) {
       MIN_TARGET_DIFFICULTY -= (uint8_t)std::ceil(std::log2(nextlevel_esttime_seconds / 60));
       MIN_TARGET_DIFFICULTY = std::max((uint8_t)32, MIN_TARGET_DIFFICULTY);
       // we need to recompute the time estimations
-      nextlevel = std::max((uint64_t)(global_bestdifficulty + 1u),
-                           (uint64_t)MIN_TARGET_DIFFICULTY);
+      nextlevel = std::max((uint64_t)(global_bestdifficulty + 1ull), (uint64_t)MIN_TARGET_DIFFICULTY);
       nextlevel_estits = ((uint64_t)1 << nextlevel);
       remaining_fastits = TSUtil::itsUntilSlowPhase(identity.size(), startcounter);
-      nextlevel_estits_adjusted = slowphase ?
-                                    nextlevel_estits :
-                                    2 * nextlevel_estits - std::min(remaining_fastits,
-                                                                    nextlevel_estits);
+      nextlevel_estits_adjusted = slowphase ? nextlevel_estits : (2 * nextlevel_estits - std::min(remaining_fastits, nextlevel_estits));
       nextlevel_esttime_seconds = nextlevel_estits_adjusted / currentspeed_total;
     }
+    overalltable.addRow({ "Security level" ,
+      std::to_string((uint32_t)global_bestdifficulty) + " (with counter=" + std::to_string(global_bestdifficulty_counter) + ")" });
 
-    std::cout << "Security level: "
-              << (uint32_t)global_bestdifficulty
-              << " (with counter="
-              << global_bestdifficulty_counter << ")"
-              << std::endl;
+    overalltable.addRow({ "Estimated time until level " + std::to_string(nextlevel), getFormattedDuration(nextlevel_esttime_seconds) });
+    overalltable.addRow({ "Current counter", std::to_string(startcounter) });
 
-    std::cout << "Estimated time until level "
-              << nextlevel << ": "
-              << getFormattedDuration(nextlevel_esttime_seconds) << std::endl;
-    std::cout << "Current counter: " << startcounter << std::endl;
+
+    // we start to print
+    if (slowphase) {
+      std::cout << "WARNING: You have entered the slow phase. With a fresh identity you could double your speed." << std::endl;
+    }
+    std::cout << overalltable.getTable();
+    std::cout << std::endl << std::endl;
+    for (auto& devtable : devicetables) {
+      std::cout << devtable.getTable() << std::endl;
+    }
+
+    std::cout << std::endl << "(press Ctrl+C to stop and save progress)" << std::endl;
   } while (timerkiller.running() && timerkiller.wait_for(std::chrono::milliseconds(1000)));
 
   // we wait for all scheduled kernels to finish
-  for (auto &dev : dev_ctxs) {
+  for (auto& dev : dev_ctxs) {
     dev.command_queue.finish();
   }
-
-  std::cout << "Stopped at counter: " << startcounter << std::endl;
+  std::cout << std::endl << "===========================================================" << std::endl;
+  std::cout << std::endl << "Stopped at counter: " << startcounter << std::endl;
 }
 
 
-void TSHasherContext::launch_kernel_single(DeviceContext *dev_ctx) {
-  const size_t global_work_size_d1 = dev_ctx->global_work_size;
-  const size_t identity_length = dev_ctx->identitystring.size();
-  cl::Kernel &kernel = TSUtil::isSlowPhase(identity_length,
-                                           dev_ctx->tshasherctx->startcounter) ?
-                                            dev_ctx->kernel2 : dev_ctx->kernel;
+void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
+  while (dev_ctx->tshasherctx->timerkiller.running()) {
+    const size_t identity_length = dev_ctx->identitystring.size();
+    cl::Kernel& kernel = TSUtil::isSlowPhase(identity_length, dev_ctx->tshasherctx->startcounter) ? dev_ctx->kernel2 : dev_ctx->kernel;
 
-  dev_ctx->tshasherctx->startcounter_mutex.lock();
-  auto dev_startcounter = dev_ctx->tshasherctx->startcounter;
-  auto global_max_iterations = std::min((uint64_t)global_work_size_d1 * KERNEL_STD_ITERATIONS,
-                                        TSUtil::itsConstantCounterLength(dev_startcounter));
-  const uint64_t iterations = global_max_iterations / global_work_size_d1;
-  if (iterations == 0) {
-    // if there are too few iterations until the counter length increases, we just skip these
-    dev_ctx->tshasherctx->startcounter += global_max_iterations;
+    dev_ctx->tshasherctx->startcounter_mutex.lock();
+    auto dev_startcounter = dev_ctx->tshasherctx->startcounter;
+    auto global_max_iterations = std::min((uint64_t)dev_ctx->global_work_size * KERNEL_STD_ITERATIONS, TSUtil::itsConstantCounterLength(dev_startcounter));
+    const uint64_t iterations = global_max_iterations / dev_ctx->global_work_size;
+    if (iterations == 0) {
+      // if there are too few iterations until the counter length increases, we just skip these
+      dev_ctx->tshasherctx->startcounter += global_max_iterations;
+      dev_ctx->tshasherctx->startcounter_mutex.unlock();
+      continue;
+    }
+    cl_int err;
+    err = kernel.setArg(0, (cl_ulong)dev_ctx->tshasherctx->startcounter);
+    err |= kernel.setArg(1, (cl_uint)iterations);
+    const uint8_t bestdifficulty = std::max(dev_ctx->tshasherctx->global_bestdifficulty, dev_ctx->bestdifficulty);
+    const uint8_t targetdifficulty = std::max(dev_ctx->tshasherctx->MIN_TARGET_DIFFICULTY, (uint8_t)(1 + bestdifficulty));
+    err |= kernel.setArg(2, (cl_uchar)targetdifficulty);
+    err |= kernel.setArg(3, dev_ctx->d_identity);
+    err |= kernel.setArg(4, (cl_uint)identity_length);
+    err |= kernel.setArg(5, dev_ctx->d_results);
+
+    if (err != CL_SUCCESS) {
+      std::cout << "A critical error occurred while " << "setting kernel arguments." << std::endl;
+      exit(-1);
+    }
+
+    dev_ctx->measureTime();
+
+
+    dev_ctx->lastscheduled_startcounter = dev_ctx->tshasherctx->startcounter;
+    dev_ctx->tshasherctx->startcounter += static_cast<uint64_t>(dev_ctx->global_work_size) * iterations;
     dev_ctx->tshasherctx->startcounter_mutex.unlock();
-    TSHasherContext::launch_kernel_single(dev_ctx);
-    return;
-  }
-  cl_int err;
-  err = kernel.setArg(0, (cl_ulong)dev_ctx->tshasherctx->startcounter);
-  err |= kernel.setArg(1, (cl_uint)iterations);
-  const uint8_t bestdifficulty = std::max(dev_ctx->tshasherctx->global_bestdifficulty,
-                                                dev_ctx->bestdifficulty);
-  const uint8_t targetdifficulty = std::max(dev_ctx->tshasherctx->MIN_TARGET_DIFFICULTY,
-                                            (uint8_t)(1 + bestdifficulty));
-  err |= kernel.setArg(2, (cl_uchar)targetdifficulty);
-  err |= kernel.setArg(3, dev_ctx->d_identity);
-  err |= kernel.setArg(4, (cl_uint)identity_length);
-  err |= kernel.setArg(5, dev_ctx->d_results);
-
-  if (err != CL_SUCCESS) {
-    std::cout << "A critical error occurred while "
-              << "setting kernel arguments."
-              << std::endl;
-    exit(-1);
-  }
-
-  dev_ctx->measureTime();
+    dev_ctx->schedulediterations_total += static_cast<uint64_t>(dev_ctx->global_work_size) * iterations;
+    dev_ctx->lastschedulediterations_total = static_cast<uint64_t>(dev_ctx->global_work_size) * iterations;
 
 
-  dev_ctx->lastscheduled_startcounter = dev_ctx->tshasherctx->startcounter;
-  dev_ctx->tshasherctx->startcounter += static_cast<uint64_t>(global_work_size_d1)*iterations;
-  dev_ctx->tshasherctx->startcounter_mutex.unlock();
-  dev_ctx->schedulediterations_total += static_cast<uint64_t>(global_work_size_d1)*iterations;
-  dev_ctx->lastschedulediterations_total = static_cast<uint64_t>(global_work_size_d1)*iterations;
+    err = dev_ctx->command_queue.enqueueNDRangeKernel(kernel, cl::NullRange,
+      cl::NDRange(dev_ctx->global_work_size),
+      cl::NDRange(dev_ctx->local_work_size),
+      NULL);
+    if (err != CL_SUCCESS) {
+      std::cout << "A critical error occurred while enqueuing the kernel." << std::endl;
+      exit(-1);
+    }
 
 
-  err = dev_ctx->command_queue.enqueueNDRangeKernel(kernel,
-                                                    cl::NullRange,
-                                                    cl::NDRange(dev_ctx->global_work_size),
-                                                    cl::NDRange(dev_ctx->local_work_size),
-                                                    NULL,
-                                                    &(dev_ctx->kernelcompletedevent));
-  if (err != CL_SUCCESS) {
-    std::cout << "A critical error occurred while enqueuing the kernel." << std::endl;
-    exit(-1);
-  }
-  err = dev_ctx->command_queue.flush();
-
-
-  if (dev_ctx->devicetype != CL_DEVICE_TYPE_CPU && dev_ctx->tshasherctx->throttlefactor == 1) {
-    // no throttling: we aim for maximum performance
-    // we sleep for the recent minimal time (slightly damped) needed to execute the kernel
-    // this reduces cpu load significantly
-    std::this_thread::sleep_for(dev_ctx->getRecentMinTime()*0.9);
-  } else if (dev_ctx->devicetype != CL_DEVICE_TYPE_CPU) {
-    // throttling: we aim for reduced cpu load
-    std::this_thread::sleep_for(dev_ctx->getRecentMinTime()*0.94);
-  }
-
-  // if we have slept a little too long
-  // it can happen that in the meantime a request to stop has been raised
-  if (dev_ctx->tshasherctx->timerkiller.running()) {
-    const size_t size_results = dev_ctx->global_work_size * sizeof(uint8_t);
-    std::vector<cl::Event> waitevents = { dev_ctx->kernelcompletedevent };
-    err = dev_ctx->command_queue.enqueueReadBuffer(dev_ctx->d_results,
-                                                   CL_FALSE,
-                                                   0,
-                                                   size_results,
-                                                   dev_ctx->h_results,
-                                                   &waitevents,
-                                                   &(dev_ctx->resultavailableevent));
-    err = dev_ctx->resultavailableevent.setCallback(CL_COMPLETE,
-                                                    kernel_result_available,
-                                                    dev_ctx);
+    // this is a workaround to reduce the cpu load for implementations (as NVIDIA's) doing busy waiting
+    #ifdef BUSYWAITING_WORKAROUND
     err = dev_ctx->command_queue.flush();
+    if (dev_ctx->devicetype != CL_DEVICE_TYPE_CPU && dev_ctx->tshasherctx->throttlefactor == 1) {
+      // no throttling: we aim for maximum performance
+      // we sleep for the recent minimal time (slightly damped) needed to execute the kernel
+      // this reduces cpu load significantly
+      std::this_thread::sleep_for(dev_ctx->getRecentMinTime() * 0.9);
+    }
+    else if (dev_ctx->devicetype != CL_DEVICE_TYPE_CPU) {
+      // throttling: we aim for reduced cpu load
+      std::this_thread::sleep_for(dev_ctx->getRecentMinTime() * 0.94);
+    }
+    #endif
+
+    dev_ctx->command_queue.finish();
+
+    if (!dev_ctx->tshasherctx->timerkiller.running()) {
+      return;
+    }
+    const size_t size_results = dev_ctx->global_work_size * sizeof(uint8_t);
+    err = dev_ctx->command_queue.enqueueReadBuffer(dev_ctx->d_results, CL_TRUE, 0, size_results, dev_ctx->h_results);
+    read_kernel_result(dev_ctx);
   }
 }
 
-void __stdcall TSHasherContext::kernel_result_available(cl_event event,
-                                              cl_int event_command_exec_status,
-                                              void* user_data) {
-  DeviceContext *dev_ctx = reinterpret_cast<DeviceContext*>(user_data);
+void TSHasherContext::read_kernel_result(DeviceContext* dev_ctx) {
 
   dev_ctx->completediterations_total += dev_ctx->lastschedulediterations_total;
   dev_ctx->completed_kernels++;
@@ -649,13 +593,13 @@ void __stdcall TSHasherContext::kernel_result_available(cl_event event,
     if (dev_ctx->h_results[thread]) {
       // target found: now we search for the correct counter
       uint64_t its_per_worker = dev_ctx->lastschedulediterations_total / dev_ctx->global_work_size;
-      uint64_t searchstartcounter = dev_ctx->lastscheduled_startcounter + its_per_worker*thread;
+      uint64_t searchstartcounter = dev_ctx->lastscheduled_startcounter + its_per_worker * thread;
       uint8_t bestdifficulty = 0;
       uint64_t bestdifficulty_counter = 0;
 
       for (uint64_t counter = searchstartcounter;
-           counter < searchstartcounter + its_per_worker;
-           counter++) {
+        counter < searchstartcounter + its_per_worker;
+        counter++) {
         uint8_t currentdifficulty = TSUtil::getDifficulty(dev_ctx->identitystring, counter);
         if (currentdifficulty > bestdifficulty) {
           bestdifficulty = currentdifficulty;
@@ -666,17 +610,13 @@ void __stdcall TSHasherContext::kernel_result_available(cl_event event,
       if (bestdifficulty > dev_ctx->bestdifficulty) {
         dev_ctx->bestdifficulty = bestdifficulty;
         dev_ctx->bestdifficulty_counter = bestdifficulty_counter;
-      } else if (bestdifficulty <= oldbestdifficulty) {
+      }
+      else if (bestdifficulty <= oldbestdifficulty) {
         // this should never happen
         std::cout << std::endl << "A critical error occurred." << std::endl;
         std::cout << "Claimed target could not be found." << std::endl;
         exit(-1);
       }
     }
-  }
-
-  // we start another kernel on this device
-  if (dev_ctx->tshasherctx->timerkiller.running()) {
-    TSHasherContext::launch_kernel_single(dev_ctx);
   }
 }

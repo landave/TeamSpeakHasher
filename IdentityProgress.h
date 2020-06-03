@@ -34,9 +34,9 @@ public:
 
   IdentityProgress();
   IdentityProgress(std::string nickname,
-                   std::string identity,
-                   uint64_t currentcounter,
-                   uint64_t bestcounter);
+    std::string identity,
+    uint64_t currentcounter,
+    uint64_t bestcounter);
 
   static const char* NICKNAME_STR;
   static const char* IDENTITY_STR;
@@ -46,7 +46,7 @@ public:
 
   std::string toIniString() const;
 
-  static IdentityProgress parse(const std::string &segment);
+  static IdentityProgress parse(const std::string& segment);
 };
 
 #endif

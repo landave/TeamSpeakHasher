@@ -29,7 +29,7 @@ SOFTWARE.
 #include "TSHasherContext.h"
 
 // we need a global pointer to the TSHasherContext for the consoleHandler
-TSHasherContext *hasherctxptr = nullptr;
+TSHasherContext* hasherctxptr = nullptr;
 
 #if defined(_WIN32) || defined(_WIN64)
 #if !defined(NOMINMAX)
@@ -53,13 +53,9 @@ void consoleHandler(int signal) {
 #endif
 
 
-const char* inputarguments_add = "add [-publickey PUBLICKEY]"
-                                  " [-startcounter STARTCOUNTER]"
-                                  " [-nickname NICKNAME]";
+const char* inputarguments_add = "add [-publickey PUBLICKEY] [-startcounter STARTCOUNTER] [-nickname NICKNAME]";
 
-const char* inputarguments_compute = "compute"
-                                     " [-throttle throttlefactor]"
-                                     " [-retune]";
+const char* inputarguments_compute = "compute  [-throttle throttlefactor]  [-retune]";
 
 const char* inputarguments_help = "help";
 
@@ -75,7 +71,7 @@ enum StringCode {
   eERR
 };
 
-StringCode getStringCode(const std::string &str) {
+StringCode getStringCode(const std::string& str) {
   if (str == "add") { return eADD; }
   if (str == "compute") { return eCOMPUTE; }
 
@@ -86,28 +82,26 @@ StringCode getStringCode(const std::string &str) {
   if (str == "-throttle") { return eTHROTTLE; }
   if (str == "-retune") { return eRETUNE; }
   if (str == "-h" ||
-      str == "--h" ||
-      str == "-help" ||
-      str == "--help" ||
-      str == "h" || str == "help")
-      { return eHELP; }
+    str == "--h" ||
+    str == "-help" ||
+    str == "--help" ||
+    str == "h" || str == "help")
+  {
+    return eHELP;
+  }
   return eERR;
 }
 
-void handleAdd(int argc, char *argv[]) {
+void handleAdd(int argc, char* argv[]) {
   bool configavailable = Config::load();
   std::string publickey;
   bool publickey_set = false;
   std::string nickname;
   uint64_t startcounter = 0;
 
-  const std::string inputformat_add = "TeamspeakHasher "
-                                      + std::string(inputarguments_add)
-                                      + "\n";
+  const std::string inputformat_add = "TeamspeakHasher " + std::string(inputarguments_add) + "\n";
   if (argc < 4) {
-    std::cout << std::endl
-    << "Error: Too few arguments. The input format is as follows."
-    << std::endl << inputformat_add;
+    std::cout << std::endl << "Error: Too few arguments. The input format is as follows." << std::endl << inputformat_add;
     exit(-1);
   }
 
@@ -115,9 +109,7 @@ void handleAdd(int argc, char *argv[]) {
 
   while (i < argc) {
     if (i + 1 >= argc) {
-      std::cout << std::endl
-      << "Error: Too few arguments. The input format is as follows."
-      << std::endl << inputformat_add;
+      std::cout << std::endl << "Error: Too few arguments. The input format is as follows." << std::endl << inputformat_add;
       exit(-1);
     }
 
@@ -125,8 +117,7 @@ void handleAdd(int argc, char *argv[]) {
     case ePUBLICKEY:
       publickey = std::string(argv[i + 1]);
       if (publickey.size() < 64 || publickey.size() > 108) {
-        std::cout << "Error: Only public keys of length at "
-                     "least 64 and at most 108 are supported." << std::endl;
+        std::cout << "Error: Only public keys of length at least 64 and at most 108 are supported." << std::endl;
         exit(-1);
       }
       publickey_set = true;
@@ -134,9 +125,7 @@ void handleAdd(int argc, char *argv[]) {
     case eSTARTCOUNTER:
       try { startcounter = std::stoull(std::string(argv[i + 1])); }
       catch (std::exception&) {
-        std::cout << "Error: Invalid start counter. The startcounter "
-                     "needs to be at least 0 and at most "
-                  << UINT64_MAX << "." << std::endl;
+        std::cout << "Error: Invalid start counter. The startcounter needs to be at least 0 and at most " << UINT64_MAX << "." << std::endl;
         exit(-1);
       }
       break;
@@ -144,9 +133,7 @@ void handleAdd(int argc, char *argv[]) {
       nickname = std::string(argv[i + 1]);
       break;
     default:
-      std::cout << std::endl << "Error: Invalid arguments. "
-                                "The input format is as follows."
-                             << std::endl << inputformat_add;
+      std::cout << std::endl << "Error: Invalid arguments. The input format is as follows." << std::endl << inputformat_add;
       exit(-1);
       break;
     }
@@ -155,47 +142,38 @@ void handleAdd(int argc, char *argv[]) {
   }
 
   if (!publickey_set) {
-    std::cout << std::endl << "Error: Too few arguments. "
-                              "Please provide a public key." << std::endl;
+    std::cout << std::endl << "Error: Too few arguments. Please provide a public key." << std::endl;
     exit(-1);
   }
 
   auto currentconfig = Config::conf.find(publickey);
   if (configavailable && currentconfig != Config::conf.end()) {
     if (currentconfig->second.currentcounter != startcounter) {
-      std::cout << "The given public key exists already in the "
-                    "progress file with startcounter="
-                << (*currentconfig).second.currentcounter << std::endl;
-      std::cout << "Do you want to overwrite the saved startcounter "
-                    "with your given startcounter? (y/n)" << std::endl;
+      std::cout << "The given public key exists already in the progress file with startcounter=" << currentconfig->second.currentcounter << std::endl;
+      std::cout << "Do you want to overwrite the saved startcounter with your given startcounter? (y/n)" << std::endl;
       std::string input;
       std::cin >> input;
       if (input == "y") {
         currentconfig->second.currentcounter = startcounter;
       }
     }
-  } else {
-    Config::conf[publickey] = IdentityProgress(nickname,
-                                               publickey,
-                                               startcounter,
-                                               startcounter);
+  }
+  else {
+    Config::conf[publickey] = IdentityProgress(nickname, publickey, startcounter, startcounter);
   }
 
   bool stored = Config::store();
   if (!stored) {
-    std::cout << "Error: Public key could not be saved. "
-                 "Make sure the current directory is writable."
-              << std::endl;
-  } else {
+    std::cout << "Error: Public key could not be saved. Make sure the current directory is writable." << std::endl;
+  }
+  else {
     std::cout << "Public key has been added successfully." << std::endl;
   }
 }
 
-void handleCompute(int argc, char *argv[]) {
+void handleCompute(int argc, char* argv[]) {
   bool configavailable = Config::load();
-  const auto inputformat_compute = "TeamspeakHasher " +
-                                   std::string(inputarguments_compute) +
-                                   "\n";
+  const auto inputformat_compute = "TeamspeakHasher " + std::string(inputarguments_compute) + "\n";
 
   uint64_t throttlefactor = 1;
 
@@ -210,9 +188,7 @@ void handleCompute(int argc, char *argv[]) {
     switch (getStringCode(std::string(argv[i]))) {
     case eTHROTTLE:
       if (i + 1 >= argc) {
-        std::cout << std::endl << "Error: Too few arguments. "
-                                  "The input format is as follows."
-                               << std::endl << inputformat_compute;
+        std::cout << std::endl << "Error: Too few arguments. The input format is as follows." << std::endl << inputformat_compute;
         exit(-1);
       }
       try {
@@ -222,9 +198,7 @@ void handleCompute(int argc, char *argv[]) {
         }
       }
       catch (std::exception&) {
-        std::cout << "Error: Invalid throttle value. "
-                     "The throttle factor must be at least 1 and a power of 2."
-                  << std::endl;
+        std::cout << "Error: Invalid throttle value. The throttle factor must be at least 1 and a power of 2." << std::endl;
         exit(-1);
       }
       i += 2;
@@ -234,9 +208,7 @@ void handleCompute(int argc, char *argv[]) {
       i++;
       break;
     default:
-      std::cout << std::endl << "Error: Invalid arguments. "
-                                "The input format is as follows."
-                             << std::endl << inputformat_compute;
+      std::cout << std::endl << "Error: Invalid arguments. The input format is as follows." << std::endl << inputformat_compute;
       exit(-1);
       break;
     }
@@ -252,8 +224,7 @@ void handleCompute(int argc, char *argv[]) {
     try { std::cin >> id; }
     catch (std::exception&) { err = true; }
     if (id >= Config::conf.size() || err) {
-      std::cout << "Invalid choice. "
-                   "Please choose a valid identity." << std::endl;
+      std::cout << "Invalid choice. Please choose a valid identity." << std::endl;
     }
   } while (id >= Config::conf.size());
 
@@ -267,18 +238,13 @@ void handleCompute(int argc, char *argv[]) {
 
   std::cout << "Initializing OpenCL..." << std::endl;
 
-  TSHasherContext hasherctx(publickey,
-                              startcounter,
-                              bestcounter,
-                              throttlefactor);
+  TSHasherContext hasherctx(publickey, startcounter, bestcounter, throttlefactor);
 
   hasherctxptr = &hasherctx;
 
-  std::cout << std::endl << std::endl << "Initialization done, "
-                                         "starting computation..."
-                                      << std::endl << std::endl;
+  std::cout << std::endl << std::endl << "Initialization done, starting computation..." << std::endl << std::endl;
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
   // we save our progress every 5 minutes
   std::thread progress_saver([&selection, &hasherctx]() -> void {
@@ -287,17 +253,16 @@ void handleCompute(int argc, char *argv[]) {
       selection->second.bestcounter = hasherctx.global_bestdifficulty_counter;
       Config::store();
     }
-  });
+    });
 
-#if defined(_WIN32) || defined(_WIN64)
+  #if defined(_WIN32) || defined(_WIN64)
   if (!SetConsoleCtrlHandler(&consoleHandler, TRUE)) {
-    std::cout << std::endl << "ERROR: Could not set console handler"
-                           << std::endl;
+    std::cout << std::endl << "ERROR: Could not set console handler" << std::endl;
     return;
   }
-#else
+  #else
   signal(SIGINT, &consoleHandler);
-#endif
+  #endif
 
   hasherctx.compute();
 
@@ -309,18 +274,16 @@ void handleCompute(int argc, char *argv[]) {
   bool stored = Config::store();
   if (stored) {
     std::cout << "The progress has been saved successfully." << std::endl;
-  } else {
+  }
+  else {
     std::cout << "Error: The progress could not be saved." << std::endl;
   }
 }
 
 void handleHelp(int argc, char* argv[]) {
-  std::cout << "Usage: TeamspeakHasher "
-               "COMMAND [OPTIONS]"
-            << std::endl << std::endl;
+  std::cout << "Usage: TeamspeakHasher COMMAND [OPTIONS]" << std::endl << std::endl;
 
-  std::cout << "The following commands are supported:"
-            << std::endl << std::endl;
+  std::cout << "The following commands are supported:" << std::endl << std::endl;
 
   std::cout << std::string(inputarguments_add) << std::endl;
   std::cout << std::string(inputarguments_compute) << std::endl;
@@ -329,7 +292,7 @@ void handleHelp(int argc, char* argv[]) {
   std::cout << std::endl;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   if (argc < 2) {
     handleHelp(argc, argv);
     exit(-1);

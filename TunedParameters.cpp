@@ -32,9 +32,9 @@ const char* TunedParameters::GLOBALWSIZE_STR = "globalworksize";
 TunedParameters::TunedParameters() {}
 
 TunedParameters::TunedParameters(std::string devicename,
-                                 std::string deviceidentifier,
-                                 uint64_t localworksize,
-                                 uint64_t globalworksize) :
+  std::string deviceidentifier,
+  uint64_t localworksize,
+  uint64_t globalworksize) :
   devicename(std::move(devicename)),
   deviceidentifier(std::move(deviceidentifier)),
   localworksize(localworksize), globalworksize(globalworksize)
@@ -73,47 +73,51 @@ TunedParameters TunedParameters::parse(const std::string& segment) {
       auto prefix_globalworksize(string(GLOBALWSIZE_STR) + "=");
 
       if (entry.compare(0,
-                        prefix_devicename.size(),
-                        prefix_devicename)
-          == 0) {
+        prefix_devicename.size(),
+        prefix_devicename)
+        == 0) {
         devicename = entry.substr(prefix_devicename.size());
-        devicename_set = devicename.size()>0;
-      } else if (entry.compare(0,
-                               prefix_deviceidentifier.size(),
-                               prefix_deviceidentifier)
-                 == 0) {
+        devicename_set = devicename.size() > 0;
+      }
+      else if (entry.compare(0,
+        prefix_deviceidentifier.size(),
+        prefix_deviceidentifier)
+        == 0) {
         deviceidentifier = entry.substr(prefix_deviceidentifier.size());
-        deviceidentifier_set = deviceidentifier.size()>0;
-      } else if (entry.compare(0,
-                               prefix_localworksize.size(),
-                               prefix_localworksize)
-                 == 0) {
+        deviceidentifier_set = deviceidentifier.size() > 0;
+      }
+      else if (entry.compare(0,
+        prefix_localworksize.size(),
+        prefix_localworksize)
+        == 0) {
         localworksize = stoull(entry.substr(prefix_localworksize.size()));
         localworksize_set = true;
-      } else if (entry.compare(0,
-                               prefix_globalworksize.size(),
-                               prefix_globalworksize)
-                 == 0) {
+      }
+      else if (entry.compare(0,
+        prefix_globalworksize.size(),
+        prefix_globalworksize)
+        == 0) {
         globalworksize = stoull(entry.substr(prefix_globalworksize.size()));
         globalworksize_set = true;
-      } else {
+      }
+      else {
         // we are evaluating this in a strict manner
         // disallowing any unknown entry names
         throw std::invalid_argument("Tuned parameter section is invalid.");
       }
     }
   }
-  catch (const std::exception &e) {
+  catch (const std::exception& e) {
     throw e;
   }
 
   if (!devicename_set || !deviceidentifier_set ||
-      !localworksize_set || !globalworksize_set) {
+    !localworksize_set || !globalworksize_set) {
     throw std::invalid_argument("Tuned parameter section is invalid.");
   }
 
   return TunedParameters(devicename,
-                         deviceidentifier,
-                         localworksize,
-                         globalworksize);
+    deviceidentifier,
+    localworksize,
+    globalworksize);
 }

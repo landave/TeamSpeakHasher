@@ -32,25 +32,25 @@ SOFTWARE.
 
 
 class Table {
- public:
+public:
   Table(std::vector<std::string> cols, bool leftaligned) {
     this->cols = cols;
     this->leftaligned = leftaligned;
     col_lengths = std::vector<size_t>(cols.size());
     size_t i = 0;
-    for (const auto &col : cols) {
+    for (const auto& col : cols) {
       col_lengths[i] = col.size();
       i++;
     }
   }
 
-  void addRow(std::vector<std::string> row) {
+  void addRow(std::initializer_list<std::string> row) {
     if (row.size() != cols.size()) {
       throw std::invalid_argument("Row size must match col size.");
     }
 
     size_t i = 0;
-    for (const auto &entry : row) {
+    for (const auto& entry : row) {
       if (entry.size() > col_lengths[i]) {
         col_lengths[i] = entry.size();
       }
@@ -62,8 +62,8 @@ class Table {
 
   std::string getTable() {
     total_length = std::accumulate(col_lengths.begin(),
-                                   col_lengths.end(),
-                                   static_cast<size_t>(0));
+      col_lengths.end(),
+      static_cast<size_t>(0));
     total_length += cols.size() + 1;
 
     std::stringstream table;
@@ -72,22 +72,22 @@ class Table {
 
     size_t i;
     i = 0;
-    for (const auto &col : cols) {
+    for (const auto& col : cols) {
       table << "|";
       table << (leftaligned ? std::left : std::right)
-            << std::setw(col_lengths[i]) << col;
+        << std::setw(col_lengths[i]) << col;
       i++;
     }
     table << "|" << std::endl;
 
     table << "+" << std::string(total_length - 2, '-') << "+" << std::endl;
 
-    for (const auto &row : rows) {
+    for (const auto& row : rows) {
       i = 0;
-      for (const auto &entry : row) {
+      for (const auto& entry : row) {
         table << "|";
         table << (leftaligned ? std::left : std::right)
-              << std::setw(col_lengths[i]) << entry;
+          << std::setw(col_lengths[i]) << entry;
         i++;
       }
       table << "|" << std::endl;
@@ -99,7 +99,7 @@ class Table {
     return table.str();
   }
 
- private:
+private:
   bool leftaligned;
   std::vector<std::string> cols;
   std::vector<std::vector<std::string>> rows;

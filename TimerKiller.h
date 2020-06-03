@@ -26,7 +26,7 @@ SOFTWARE.
 #include <mutex>
 
 class TimerKiller {
- public:
+public:
   template<class R, class P>
   bool wait_for(std::chrono::duration<R, P> const& time) {
     std::unique_lock<std::mutex> lock(m);
@@ -42,7 +42,7 @@ class TimerKiller {
   bool running() {
     return !terminate;
   }
- private:
+private:
   std::condition_variable cv;
   std::mutex m;
   volatile bool terminate = false;
