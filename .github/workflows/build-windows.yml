@@ -20,8 +20,8 @@ jobs:
       uses: microsoft/setup-msbuild@v1.0.2
       
     - name: Download OpenCL SDK
-      run: wget https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip
-      shell: bash
+      run: Invoke-WebRequest -OutFile lightOCLSDK.zip https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip
+      shell: pwsh
       
     - name: Extract OpenCL SDK
       run: 7z x lightOCLSDK.zip
