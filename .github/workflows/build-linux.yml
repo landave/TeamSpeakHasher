@@ -1,0 +1,21 @@
+name: Linux Build
+
+on: push
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: APT update
+      run: sudo apt update
+    - name: APT install
+      run: sudo apt install ocl-icd-opencl-dev
+    - name: make all
+      run: make all
+    - uses: actions/upload-artifact@v2
+      with:
+        name: TeamSpeakHasher-Linux-Bin
+        path: TeamSpeakHasher

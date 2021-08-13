@@ -2,6 +2,11 @@
 
 TeamSpeakHasher is an OpenCL-based tool that can be used to increase the security level of TeamSpeak identities with unprecedented performance and efficiency.
 
+## Download
+GitHub Actions automatically builds each commit.
+
+To download the latest build, go to the **Actions** tab, choose the desired OS in the left sidebar and click the top result. The download link can be found at the bottom of this page under the name `TeamSpeakHasher-[OS]-Bin` in the Artifacts section.
+
 ## Build Instructions
 ### Linux
 1. Make sure you have the OpenCL headers and libraries set up properly on your system.
@@ -17,8 +22,9 @@ TeamSpeakHasher is an OpenCL-based tool that can be used to increase the securit
 ## Usage
 The general usage format is as follows.
 
-​```
-./TeamSpeakHasher COMMAND [OPTIONS]​```
+```
+./TeamSpeakHasher COMMAND [OPTIONS]
+```
 
 There are two commands:
 * `add -publickey PUBLICKEY [-startcounter STARTCOUNTER] [-nickname NICKNAME]`
