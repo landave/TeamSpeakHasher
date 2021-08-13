@@ -1,0 +1,37 @@
+name: MSBuild
+
+on: [push]
+
+env:
+  SOLUTION_FILE_PATH: TeamSpeakHasher.vcxproj
+  BUILD_CONFIGURATION: Release
+  BUILD_PLATFORM: x64
+  OPENCL_LIB_WIN32: lib/x86
+  OPENCL_LIB_WIN64: lib/x86_64
+  
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+      
+    - name: Download OpenCL SDK
+      run: wget https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip
+      shell: bash
+      
+    - name: Extract OpenCL SDK
+      run: 7z x lightOCLSDK.zip
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /p:Platform=${{env.BUILD_PLATFORM}} /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: TeamSpeakHasher-Windows-Bin.exe
+        path: TeamSpeakHasher.exe
+        
