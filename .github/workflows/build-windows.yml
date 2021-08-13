@@ -33,5 +33,5 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: TeamSpeakHasher-Windows-Bin.exe
-        path: /x64/Release/TeamSpeakHasher.exe
+        path: x64/Release/TeamSpeakHasher.exe
         
