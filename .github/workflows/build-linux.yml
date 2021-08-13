@@ -15,3 +15,7 @@ jobs:
       run: sudo apt install ocl-icd-opencl-dev
     - name: make all
       run: make all
+    - uses: actions/upload-artifact@v2
+      with:
+        name: TeamSpeakHasher-Linux-Bin
+        path: TeamSpeakHasher
