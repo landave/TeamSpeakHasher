@@ -1,4 +1,4 @@
-name: MSBuild
+name: Windows Build
 
 on: [push]
 
@@ -6,8 +6,8 @@ env:
   SOLUTION_FILE_PATH: TeamSpeakHasher.vcxproj
   BUILD_CONFIGURATION: Release
   BUILD_PLATFORM: x64
-  OPENCL_LIB_WIN32: lib/x86
-  OPENCL_LIB_WIN64: lib/x86_64
+  OPENCL_LIB_WIN32: OpenCL/lib/x86
+  OPENCL_LIB_WIN64: OpenCL/lib/x86_64
   
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
       shell: pwsh
       
     - name: Extract OpenCL SDK
-      run: 7z x lightOCLSDK.zip
+      run: 7z x lightOCLSDK.zip -oOpenCL
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
