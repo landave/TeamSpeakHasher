@@ -56,7 +56,7 @@ public:
   TSHasherContext(std::string identity,
     uint64_t startcounter,
     uint64_t bestcounter,
-    uint64_t throttlefactor);
+    double throttlefactor);
 
   void compute();
   void printinfo(const std::vector<DeviceContext>& dev_ctxs);
@@ -73,7 +73,7 @@ private:
 
   std::string identity;
 
-  uint64_t throttlefactor;
+  double throttlefactor;
   std::mutex startcounter_mutex;
   std::vector<DeviceContext> dev_ctxs;
   std::vector<cl::Device> devices;

@@ -92,6 +92,11 @@ void DeviceContext::measureTime() {
   timer_started = true;
 }
 
+void DeviceContext::resetTimer() {
+    auto currenttime = std::chrono::high_resolution_clock::now();
+    laststarttime = currenttime;
+}
+
 std::chrono::duration<uint64_t, std::nano> DeviceContext::getCurrentKernelRunningTime() {
   return std::chrono::high_resolution_clock::now() - laststarttime;
 }

@@ -93,6 +93,7 @@ public:
   std::string      identitystring;
 
   void measureTime();
+  void resetTimer(); // sets current running timer back to 0
 
   std::chrono::duration<uint64_t, std::nano> getCurrentKernelRunningTime();
 
