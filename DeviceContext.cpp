@@ -68,7 +68,8 @@ DeviceContext::DeviceContext(std::string device_name,
   h_results(h_results),
   identitystring(std::move(identitystring)),
   recenttimes(NUM_TIME_MEASURMENTS),
-  recentiterations(NUM_TIME_MEASURMENTS) {
+  recentiterations(NUM_TIME_MEASURMENTS),
+  recentstarttimes(NUM_TIME_MEASURMENTS) {
   bestdifficulty = 0;
   bestdifficulty_counter = 0;
   lastschedulediterations_total = 0;
@@ -86,6 +87,7 @@ void DeviceContext::measureTime() {
     auto timeidx = timecounter % NUM_TIME_MEASURMENTS;
     recenttimes[timeidx] = currenttime - laststarttime;
     recentiterations[timeidx] = lastschedulediterations_total;
+    recentstarttimes[timeidx] = laststarttime;
     timecounter++;
   }
   laststarttime = currenttime;
@@ -93,8 +95,8 @@ void DeviceContext::measureTime() {
 }
 
 void DeviceContext::resetTimer() {
-    auto currenttime = std::chrono::high_resolution_clock::now();
-    laststarttime = currenttime;
+  auto currenttime = std::chrono::high_resolution_clock::now();
+  laststarttime = currenttime;
 }
 
 std::chrono::duration<uint64_t, std::nano> DeviceContext::getCurrentKernelRunningTime() {
@@ -103,11 +105,16 @@ std::chrono::duration<uint64_t, std::nano> DeviceContext::getCurrentKernelRunnin
 
 double DeviceContext::getAvgSpeed() const {
   using namespace std::chrono;
+  auto currenttime = high_resolution_clock::now();
   size_t len = std::min(timecounter, NUM_TIME_MEASURMENTS);
   auto totaliterations = std::accumulate(recentiterations.begin(), recentiterations.begin() + len, (uint64_t)0);
-  auto totaltime = std::accumulate(recenttimes.begin(), recenttimes.begin() + len, steady_clock::duration::zero());
-  auto seconds = duration_cast<nanoseconds>(totaltime).count() / 1e9;
-  return totaliterations / seconds;
+  auto firststarttime = timecounter < NUM_TIME_MEASURMENTS ? recentstarttimes[0] : recentstarttimes[timecounter % NUM_TIME_MEASURMENTS];
+  auto totaltime = currenttime - firststarttime;
+  const double totalseconds = static_cast<double>(duration_cast<nanoseconds>(totaltime).count()) * 1e-9;
+  if (totalseconds <= 0.0) {
+    return 0.0;
+  }
+  return static_cast<double>(totaliterations) / totalseconds;
 }
 
 std::chrono::duration<uint64_t, std::nano> DeviceContext::getRecentMinTime() const {

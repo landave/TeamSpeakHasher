@@ -106,6 +106,7 @@ public:
 private:
   std::chrono::time_point<std::chrono::high_resolution_clock> laststarttime;
   std::vector<std::chrono::duration<uint64_t, std::nano>> recenttimes;
+  std::vector<std::chrono::time_point<std::chrono::high_resolution_clock>> recentstarttimes;
   std::vector<uint64_t> recentiterations;
   uint64_t timecounter;
 

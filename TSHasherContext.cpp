@@ -83,24 +83,24 @@ void TSHasherContext::clearConsole() {
 
 static int roundUpPowerOfTwo(double x)
 {
-    // Handle non-positive or small values
-    if (x <= 1.0) {
-        return 1;
-    }
+  // Handle non-positive or small values
+  if (x <= 1.0) {
+    return 1;
+  }
 
-    // Floor of the log base-2
-    int exponent = static_cast<int>(std::floor(std::log2(x)));
+  // Floor of the log base-2
+  int exponent = static_cast<int>(std::floor(std::log2(x)));
 
-    // Compute 2^exponent
-    double powerOfTwo = std::pow(2.0, exponent);
+  // Compute 2^exponent
+  double powerOfTwo = std::pow(2.0, exponent);
 
-    // If that power is still less than x, go to the next exponent
-    if (powerOfTwo < x) {
-        exponent++;
-    }
+  // If that power is still less than x, go to the next exponent
+  if (powerOfTwo < x) {
+    exponent++;
+  }
 
-    // Raise 2 to the adjusted exponent
-    return static_cast<int>(std::pow(2.0, exponent));
+  // Raise 2 to the adjusted exponent
+  return static_cast<int>(std::pow(2.0, exponent));
 }
 
 TSHasherContext::TSHasherContext(std::string identity,
@@ -558,7 +558,7 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
       exit(-1);
     }
 
-   
+
 
 
     dev_ctx->lastscheduled_startcounter = dev_ctx->tshasherctx->startcounter;
@@ -578,7 +578,7 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
     }
 
     // this is a workaround to reduce the cpu load for implementations (as NVIDIA's) doing busy waiting
-    #ifdef BUSYWAITING_WORKAROUND
+#ifdef BUSYWAITING_WORKAROUND
     err = dev_ctx->command_queue.flush();
     if (dev_ctx->devicetype != CL_DEVICE_TYPE_CPU && dev_ctx->tshasherctx->throttlefactor == 1) {
       // no throttling: we aim for maximum performance
@@ -590,7 +590,7 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
       // throttling: we aim for reduced cpu load
       std::this_thread::sleep_for(dev_ctx->getRecentMinTime() * 0.94);
     }
-    #endif
+#endif
 
     dev_ctx->command_queue.finish();
 
@@ -604,9 +604,9 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
 
     // Additional sleep when Throttling
     if (dev_ctx->tshasherctx->throttlefactor > 1.00001) {
-        std::this_thread::sleep_for(dev_ctx->getRecentMinTime() * (dev_ctx->tshasherctx->throttlefactor - 1));
-        // exclude throttling time from timer
-        dev_ctx->resetTimer();
+      std::this_thread::sleep_for(dev_ctx->getRecentMinTime() * (dev_ctx->tshasherctx->throttlefactor - 1));
+      // exclude throttling time from timer
+      dev_ctx->resetTimer();
     }
   }
 }
