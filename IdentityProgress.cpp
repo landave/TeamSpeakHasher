@@ -21,6 +21,7 @@ SOFTWARE.
 */
 #include "IdentityProgress.h"
 
+#include <cstdint>
 #include <algorithm>
 #include <string>
 
