@@ -21,6 +21,7 @@ SOFTWARE.
 */
 #ifndef IDENTITYPROGRESS_H_
 #define IDENTITYPROGRESS_H_
+#include <cstdint>
 #include <string>
 #include <sstream>
 #include <fstream>
