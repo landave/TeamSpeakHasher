@@ -175,7 +175,7 @@ void handleCompute(int argc, char* argv[]) {
   bool configavailable = Config::load();
   const auto inputformat_compute = "TeamspeakHasher " + std::string(inputarguments_compute) + "\n";
 
-  uint64_t throttlefactor = 1;
+  double throttlefactor = 1;
 
   if (!configavailable || Config::conf.empty()) {
     std::cout << "Error: Please add a public key first." << std::endl;
@@ -192,14 +192,11 @@ void handleCompute(int argc, char* argv[]) {
         exit(-1);
       }
       try {
-        throttlefactor = std::stoull(std::string(argv[i + 1]));
-        if ((throttlefactor & (throttlefactor - 1)) != 0) {
-          throw std::exception();
-        }
+          throttlefactor = std::stod(std::string(argv[i + 1]));
       }
       catch (std::exception&) {
-        std::cout << "Error: Invalid throttle value. The throttle factor must be at least 1 and a power of 2." << std::endl;
-        exit(-1);
+          std::cout << "Error: Invalid throttle value. The throttle factor must be a number greater or equal than 1." << std::endl;
+          exit(-1);
       }
       i += 2;
       break;

@@ -81,11 +81,32 @@ void TSHasherContext::clearConsole() {
 }
 #endif
 
+static int roundUpPowerOfTwo(double x)
+{
+  // Handle non-positive or small values
+  if (x <= 1.0) {
+    return 1;
+  }
+
+  // Floor of the log base-2
+  int exponent = static_cast<int>(std::floor(std::log2(x)));
+
+  // Compute 2^exponent
+  double powerOfTwo = std::pow(2.0, exponent);
+
+  // If that power is still less than x, go to the next exponent
+  if (powerOfTwo < x) {
+    exponent++;
+  }
+
+  // Raise 2 to the adjusted exponent
+  return static_cast<int>(std::pow(2.0, exponent));
+}
 
 TSHasherContext::TSHasherContext(std::string identity,
   uint64_t startcounter,
   uint64_t bestcounter,
-  uint64_t throttlefactor) :
+  double throttlefactor) :
   startcounter(startcounter),
   global_bestdifficulty(TSUtil::getDifficulty(identity, bestcounter)),
   global_bestdifficulty_counter(bestcounter),
@@ -190,7 +211,8 @@ TSHasherContext::TSHasherContext(std::string identity,
     size_t global_work_size = DEV_DEFAULT_GLOBAL_WORK_SIZE;
     size_t local_work_size = DEV_DEFAULT_LOCAL_WORK_SIZE;
     auto bestgloballocal = tune(&device, device_id, build_opts);
-    global_work_size = std::max(bestgloballocal.first / throttlefactor, bestgloballocal.second);
+    global_work_size = std::max(bestgloballocal.first / roundUpPowerOfTwo(throttlefactor), bestgloballocal.second);
+
     local_work_size = bestgloballocal.second;
 
     // device memory
@@ -536,7 +558,7 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
       exit(-1);
     }
 
-    dev_ctx->measureTime();
+
 
 
     dev_ctx->lastscheduled_startcounter = dev_ctx->tshasherctx->startcounter;
@@ -555,9 +577,8 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
       exit(-1);
     }
 
-
     // this is a workaround to reduce the cpu load for implementations (as NVIDIA's) doing busy waiting
-    #ifdef BUSYWAITING_WORKAROUND
+#ifdef BUSYWAITING_WORKAROUND
     err = dev_ctx->command_queue.flush();
     if (dev_ctx->devicetype != CL_DEVICE_TYPE_CPU && dev_ctx->tshasherctx->throttlefactor == 1) {
       // no throttling: we aim for maximum performance
@@ -569,7 +590,7 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
       // throttling: we aim for reduced cpu load
       std::this_thread::sleep_for(dev_ctx->getRecentMinTime() * 0.94);
     }
-    #endif
+#endif
 
     dev_ctx->command_queue.finish();
 
@@ -579,6 +600,14 @@ void TSHasherContext::run_kernel_loop(DeviceContext* dev_ctx) {
     const size_t size_results = dev_ctx->global_work_size * sizeof(uint8_t);
     err = dev_ctx->command_queue.enqueueReadBuffer(dev_ctx->d_results, CL_TRUE, 0, size_results, dev_ctx->h_results);
     read_kernel_result(dev_ctx);
+    dev_ctx->measureTime();
+
+    // Additional sleep when Throttling
+    if (dev_ctx->tshasherctx->throttlefactor > 1.00001) {
+      std::this_thread::sleep_for(dev_ctx->getRecentMinTime() * (dev_ctx->tshasherctx->throttlefactor - 1));
+      // exclude throttling time from timer
+      dev_ctx->resetTimer();
+    }
   }
 }
 
